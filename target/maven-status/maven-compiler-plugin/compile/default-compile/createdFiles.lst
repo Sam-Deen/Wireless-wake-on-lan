@@ -1,0 +1,5 @@
+com/sam/wwol/WwolApplication.class
+com/sam/wwol/PowerService.class
+com/sam/wwol/StatusService.class
+com/sam/wwol/PowerController.class
+com/sam/wwol/HealthLoop.class
