@@ -21,6 +21,20 @@ public class PowerService {
         this.status = status;
     }
 
+    // Validate the same packet configuration and local transport used by power/on.
+    // Health checks never transmit a magic packet or issue a shutdown command.
+    public boolean wakeTransportAvailable() {
+        try {
+            parseMac(mac);
+            try (var socket = new java.net.DatagramSocket()) {
+                socket.setBroadcast(true);
+            }
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
+    }
+
     public String turnOn() {
         sendWakeOnLan(mac);
         sleep(7000);

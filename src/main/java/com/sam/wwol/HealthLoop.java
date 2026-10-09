@@ -1,7 +1,7 @@
 package com.sam.wwol;
 
 import org.springframework.stereotype.Component;
-import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Scheduled;
 
 @Component
 public class HealthLoop {
@@ -12,18 +12,8 @@ public class HealthLoop {
         this.statusService = statusService;
     }
 
-    @PostConstruct
-    public void start() {
-        Thread t = new Thread(() -> {
-            while (true) {
-                statusService.updateStatus();
-                try {
-                    Thread.sleep(10000);
-                } catch (InterruptedException ignored) {}
-            }
-        });
-
-        t.setDaemon(true);
-        t.start();
+    @Scheduled(fixedDelay = 10_000)
+    public void update() {
+        statusService.updateStatus();
     }
 }
