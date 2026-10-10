@@ -2,10 +2,8 @@ version: "3.8"
 
 services:
   wwol:
-    build: .
+    image: samdebanenman/wireless-wake-on-lan:latest
     container_name: wwol
-    labels:
-      - com.centurylinklabs.watchtower.enable=false
     restart: unless-stopped
     ports:
       - "8888:8888"
