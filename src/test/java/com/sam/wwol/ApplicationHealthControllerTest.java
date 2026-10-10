@@ -13,18 +13,27 @@ class ApplicationHealthControllerTest {
     private StatusService status;
     private PowerService power;
     private MockMvc mvc;
+    private ApplicationHealthMonitor monitor;
 
     @BeforeEach
     void setup() {
         status = mock(StatusService.class);
         power = mock(PowerService.class);
         when(power.wakeTransportAvailable()).thenReturn(true);
-        mvc = MockMvcBuilders.standaloneSetup(new ApplicationHealthController(status, power)).build();
+        monitor = new ApplicationHealthMonitor(status, power, new HealthSettings(java.util.Map.of()));
+        monitor.checkApplication();
+        monitor.checkWake();
+        ComponentHealth unmeasured = new ComponentHealth(10_000, 30_000, 1500, 1, 1);
+        when(status.getHealth(any(Instant.class))).thenAnswer(call -> unmeasured.snapshot(call.getArgument(0)));
+        mvc = MockMvcBuilders.standaloneSetup(new ApplicationHealthController(monitor)).build();
     }
 
     private void measurement(String target, Instant attempt, int failures, String reason) {
         when(status.getMeasurement()).thenReturn(new StatusService.Measurement(
                 target, attempt, failures == 0 ? attempt : null, 10, failures, reason));
+        ComponentHealth state = new ComponentHealth(10_000, 30_000, 1500, 1, 1);
+        state.record(failures == 0, 10, reason, attempt, attempt);
+        when(status.getHealth(any(Instant.class))).thenAnswer(call -> state.snapshot(call.getArgument(0)));
     }
 
     @Test
@@ -71,6 +80,7 @@ class ApplicationHealthControllerTest {
     void invalidWakeConfigurationMakesCoreUnavailable() throws Exception {
         measurement("off", Instant.now(), 0, null);
         when(power.wakeTransportAvailable()).thenReturn(false);
+        monitor.checkWake();
         mvc.perform(get("/health/application"))
                 .andExpect(jsonPath("$.status").value("down"))
                 .andExpect(jsonPath("$.components.wakeTransport.status").value("down"));

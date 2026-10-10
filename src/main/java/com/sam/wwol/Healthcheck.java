@@ -78,7 +78,7 @@ public final class Healthcheck {
         report.put("status", "down");
         report.put("coreAvailable", false);
         report.put("timestamp", Instant.now().toString());
-        report.put("validForMs", 90_000);
+        report.put("validForMs", 180_000);
         ObjectNode application = report.putObject("components").putObject("application");
         application.put("status", "down");
         application.put("critical", true);

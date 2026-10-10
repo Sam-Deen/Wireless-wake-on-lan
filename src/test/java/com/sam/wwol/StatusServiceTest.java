@@ -16,7 +16,7 @@ class StatusServiceTest {
         service = spy(new StatusService("127.0.0.1"));
         process = mock(Process.class);
         doReturn(process).when(service).startPing();
-        when(process.waitFor(2, TimeUnit.SECONDS)).thenReturn(true);
+        when(process.waitFor(2000, TimeUnit.MILLISECONDS)).thenReturn(true);
     }
 
     @Test
@@ -44,7 +44,7 @@ class StatusServiceTest {
 
     @Test
     void timedOutProcessIsTerminated() throws Exception {
-        when(process.waitFor(2, TimeUnit.SECONDS)).thenReturn(false);
+        when(process.waitFor(2000, TimeUnit.MILLISECONDS)).thenReturn(false);
         when(process.isAlive()).thenReturn(true);
         service.updateStatus();
         assertEquals("Request timed out", service.getMeasurement().reason());

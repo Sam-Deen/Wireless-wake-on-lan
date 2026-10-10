@@ -12,7 +12,7 @@ public class HealthLoop {
         this.statusService = statusService;
     }
 
-    @Scheduled(fixedDelay = 10_000)
+    @Scheduled(fixedDelayString = "#{@healthSettings.statusInterval()}")
     public void update() {
         statusService.updateStatus();
     }

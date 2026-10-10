@@ -3,12 +3,17 @@ package com.sam.wwol;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class StatusService {
 
     private final String targetIp;
+    private final HealthSettings settings;
+    private final ComponentHealth health;
 
     private volatile Measurement measurement;
 
@@ -17,9 +22,13 @@ public class StatusService {
 
     private record Probe(boolean completed, boolean online, String reason) {}
 
-    public StatusService(@Value("${target.ip}") String targetIp) {
+    @Autowired
+    public StatusService(@Value("${target.ip}") String targetIp, HealthSettings settings) {
         this.targetIp = targetIp;
+        this.settings = settings;
+        health = settings.component("STATUS_MONITOR", settings.statusInterval(), 30_000, settings.pingTimeout(), 1500);
     }
+    public StatusService(String targetIp) { this(targetIp, new HealthSettings(Map.of())); }
 
     public boolean ping() {
         return probe().online();
@@ -29,7 +38,7 @@ public class StatusService {
         Process process = null;
         try {
             process = startPing();
-            if (!process.waitFor(2, TimeUnit.SECONDS)) {
+            if (!process.waitFor(settings.pingTimeout(), TimeUnit.MILLISECONDS)) {
                 return new Probe(false, false, "Request timed out");
             }
             int code = process.exitValue();
@@ -56,12 +65,14 @@ public class StatusService {
     }
 
     public void updateStatus() {
-        Instant attempt = Instant.now();
+        Instant attempt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         long started = System.nanoTime();
         Probe result = probe();
+        Instant measured = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        health.record(result.completed(), (System.nanoTime() - started) / 1_000_000.0, result.reason(), attempt, measured);
         Measurement previous = measurement;
         measurement = new Measurement(result.completed() ? result.online() ? "on" : "off" : "unknown",
-                attempt, result.completed() ? Instant.now() : previous == null ? null : previous.lastSuccess(),
+                attempt, result.completed() ? measured : previous == null ? null : previous.lastSuccess(),
                 (System.nanoTime() - started) / 1_000_000.0,
                 result.completed() ? 0 : previous == null ? 1 : Math.min(1_000_000, previous.consecutiveFailures() + 1),
                 result.reason());
@@ -73,4 +84,5 @@ public class StatusService {
     }
 
     public Measurement getMeasurement() { return measurement; }
+    public Map<String, Object> getHealth(Instant now) { return health.snapshot(now); }
 }
